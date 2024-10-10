@@ -1,0 +1,466 @@
+<!-- public/index.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Game Ball</title>
+    <script src="/socket.io/socket.io.js"></script>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="./css/bootstrap.min.css">
+
+</head>
+<body>
+    <h1>Game Ball</h1>
+    <div class="container-xl">
+        <div class="row">
+            <div class="col-2">
+                <input type="text" class="form-control" id="username" placeholder="Enter your name">
+            </div>
+            <div class="col-8">
+                <button id="joinButton" class="btn btn-primary">Join Game</button>
+                <button id="startButton" class="btn btn-success" disabled>Start Game</button>
+                <button id="pauseButton" class="btn btn-warning" disabled>Paused Game</button>
+                <button id="resetButton" class="btn btn-danger" disabled>Reset Game</button>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col">
+                <div id="bingoBoard"></div>
+            </div>
+            <div class="col">
+                <div style="text-align: center;"><img id="drawNow" src="draw-balls-toto.gif" alt="draw" class="hidden" /> </div>
+                <div id="bingoNumber" class="hidden">
+                    <div id="big-ball">
+                        <h1 id="bingoNum">0</h1>
+                    </div>
+                </div>
+                <div id="bingoNumber2" class="hidden">
+                    <h2 id="bingoNumdesc"></h2>
+                </div>
+            </div>
+        </div>
+        <div class="row">
+            <div id="participants"></div>
+        </div>
+        <div class="row">
+            <div id="numbersCalled" class="raffle-container"></div>
+        </div>
+        <div class="row">
+            <div id="bingoWinner"></div>
+        </div>
+    </div>
+
+
+    <script>
+        
+        const socket = io();
+        const boardSize = 5; // Assuming a 5x5 Bingo board
+        let bingoBoard = [];
+        let bingoBoardValue = [];
+        let numberCalled = [];
+        const maxnum_row = [15, 30, 45, 60, 75];
+        const usedNumbers = new Set();
+        let isBingo = true;
+        let username;
+        let admin = "admin";
+        let allow_all = true;
+        let isStarted = false;
+
+        window.addEventListener("load", function() {
+            document.getElementById('numbersCalled').innerText = 'Numbers Called:';
+            document.getElementById('bingoWinner').innerText = '';
+            document.getElementById('bingoNum').innerText = 0;
+            bingoBoard = [];
+            bingoBoardValue = [];
+            numberCalled = [];
+            isBingo = true;
+            isStarted = false;
+        });
+
+        const joinEventHandler = function() {
+            if (this.disabled) return;
+            username = document.getElementById('username').value;
+            if (username) {
+                socket.emit('join', username);
+                createBingoBoard();
+                if (username == admin) {
+                    document.getElementById('startButton').disabled = false; // Enable start button
+                    document.getElementById('pauseButton').disabled = false; // Enable pause button
+                    document.getElementById('resetButton').disabled = false; // Enable reset button
+                } else {
+                    document.getElementById('resetButton').remove(); // remove reset button
+                }
+                document.getElementById('joinButton').disabled = true; // Enable start button
+
+                document.getElementById('joinButton').removeEventListener('click', joinEventHandler, false);
+
+            }
+        };
+
+        document.getElementById('joinButton').addEventListener('click', joinEventHandler, false);
+
+        socket.on('welcome', ({ users, numbersCalled}) => {
+            document.getElementById('participants').innerText = 'Participants : ' + users.map(user => user.username).join(', ');
+            if (username) {
+                updateNumbersCalled(numbersCalled);
+            } 
+        });
+
+        socket.on('newuser', (users) => {
+            document.getElementById('participants').innerText = 'Participants : ' + users.map(user => user.username).join(', ');
+        });
+
+
+        socket.on('gameStarted', () => {
+            isStarted = true;
+            alert('The game has begun.'); // Notify users that the game has started
+        });
+
+        socket.on('gameResumed', () => {
+            isStarted = true;
+            alert('The game resumed.'); // Notify users that the game has started
+        });
+
+        socket.on('gamePaused', () => {
+            isStarted = false;
+            alert("We've put the game on hold. Please wait."); // Notify users that the game was hold
+        });
+
+        socket.on('pauseWinner', (winners) => {
+            const winner = winners.join(', ');
+            alert('We have a winner! Congrats ' + winner); // Notify users that we have a winner
+        });
+
+        socket.on('gameReset', () => {
+            isStarted = false;
+            numberCalled = [];
+            bingoWinner = [];
+            alert('he game has been reset.'); // Notify users that the game has been reset
+            createBingoBoard();
+            document.getElementById('numbersCalled').innerText = 'Numbers Called:';
+            document.getElementById('bingoWinner').innerText = '';
+            document.getElementById('bingoNum').innerText = 0;
+
+        });
+
+        const startEventHandler = function() {
+            if (this.disabled) return;
+            socket.emit('startGame'); // Notify the server to start the game
+            if (username == admin) {
+                document.getElementById('pauseButton').disabled = false; // Enable pause button
+            }
+
+            document.getElementById('bingoNumber').classList.remove('active');
+            document.getElementById('bingoNumber').classList.add('hidden');
+
+            document.getElementById('bingoNumber2').classList.remove('active');
+            document.getElementById('bingoNumber2').classList.add('hidden');
+
+            document.getElementById('drawNow').classList.remove('hidden');
+            document.getElementById('drawNow').classList.add('active');
+            document.getElementById('bongo').style.backgroundColor = 'white';
+
+            document.getElementById('pauseButton').addEventListener("click", pauseEventHandler , false);
+            document.getElementById('resetButton').addEventListener("click", resetEventHandler , false);
+
+            document.getElementById('startButton').removeEventListener("click", startEventHandler , false);
+        };
+        document.getElementById('startButton').addEventListener("click", startEventHandler, false);
+
+        const pauseEventHandler = function() {
+            if (this.disabled) return;
+            socket.emit('pauseGame'); // Notify the server to start the game
+            if (username == admin) {
+                document.getElementById('startButton').disabled = false; // Enable start button
+            }
+
+            document.getElementById('bingoNumber').classList.add('hidden');
+            document.getElementById('bingoNumber2').classList.add('hidden');
+            document.getElementById('drawNow').classList.add('hidden');
+
+            document.getElementById('startButton').addEventListener("click", startEventHandler , false);
+            document.getElementById('resetButton').addEventListener("click", resetEventHandler , false);
+
+            document.getElementById('pauseButton').removeEventListener("click", pauseEventHandler , false);
+        };
+        document.getElementById('pauseButton').addEventListener("click", pauseEventHandler, false);
+        
+        const resetEventHandler = function() {
+            if (this.disabled) return;
+            socket.emit('resetGame'); // Notify the server to start the game
+            if (username == admin) {
+                document.getElementById('resetButton').disabled = false; // Enable start button
+            }
+
+            document.getElementById('bingoNumber').classList.add('hidden');
+            document.getElementById('bingoNumber2').classList.add('hidden');
+            document.getElementById('drawNow').classList.add('hidden');
+            document.getElementById('bongo').style.backgroundColor = 'white';
+
+            document.getElementById('startButton').addEventListener("click", startEventHandler , false);
+            document.getElementById('pauseButton').addEventListener("click", pauseEventHandler , false);
+
+            document.getElementById('resetButton').removeEventListener("click", resetEventHandler , false);
+        };
+        document.getElementById('resetButton').addEventListener("click", resetEventHandler, false);
+        socket.on('numberCalled', (number) => {
+            const bgColor = numberToColor(number);
+            let letter = "";
+            let description = numberPinoyTerm(number);
+
+            switch (true) {
+                case (number >= 1 && number <= 15):
+                    letter = "B";
+                    break;
+                case (number >= 16 && number <= 30):
+                    letter = "I";
+                    break;
+                case (number >= 31 && number <= 45):
+                    letter = "N";
+                    break;
+                case (number >= 46 && number <= 60):
+                    letter = "G";
+                    break;
+                case (number >= 61 && number <= 75):
+                    letter = "O";
+                    break;
+            }
+            
+            const wrappedDiv = `<div class="ball" style="background-color: ${bgColor}">${number}</div>`;
+            document.getElementById('numbersCalled').innerHTML += ` ${wrappedDiv}`;
+            document.getElementById('big-ball').style.backgroundColor = bgColor;
+            document.getElementById('bingoNum').innerText = `${number}`;
+            document.getElementById('bingoNumdesc').innerText = `${letter} - ${description}`;
+
+            numberCalled.push(number);
+            
+            document.getElementById('bingoNumber').classList.remove('hidden');
+            document.getElementById('bingoNumber').classList.add('active');
+
+            document.getElementById('bingoNumber2').classList.remove('hidden');
+            document.getElementById('bingoNumber2').classList.add('active');
+
+            document.getElementById('drawNow').classList.add('hidden');
+            document.getElementById('drawNow').classList.remove('active');
+            // markBingo(number);
+        });
+
+        socket.on('drawNow', (duration) => {
+            setTimeout(() => {
+                document.getElementById('bingoNumber').classList.remove('active');
+                document.getElementById('bingoNumber').classList.add('hidden');
+
+                document.getElementById('bingoNumber2').classList.remove('active');
+                document.getElementById('bingoNumber2').classList.add('hidden');
+
+                document.getElementById('drawNow').classList.remove('hidden');
+                document.getElementById('drawNow').classList.add('active');
+            }, duration);
+        });
+
+        socket.on('gameOver', (status) => {
+            isStarted = status;
+            alert('The game has been ended!'); // Notify users that the game has paused
+            document.getElementById('drawNow').classList.add('hidden');
+        });
+
+        socket.on('bingoWinner', (winners) => {
+            document.getElementById('drawNow').classList.add('hidden');
+            updateBingoWinner(winners);
+            markBingoWinner();
+        });
+
+        function createBingoBoard() {
+
+            bingoBoard = Array.from({ length: boardSize }, (_, rowIndex) => {
+                return Array.from({ length: boardSize }, (_, colIndex) => {
+                    // Determine the range for each column
+                    switch (colIndex) {
+                        case 0: return getRandomNumber(1,15); // 1-15
+                        case 1: return getRandomNumber(16,30); // 16-30
+                        case 2: return getRandomNumber(31,45); // 31-45
+                        case 3: return getRandomNumber(46,60); // 46-60
+                        case 4: return getRandomNumber(61,75); // 61-75
+                        default: return 0; // This case should never be hit
+                    }
+                });
+            });
+            const boardDiv = document.getElementById('bingoBoard');
+            boardDiv.innerHTML = '<div class="cell col-header">B</div><div class="cell col-header">I</div><div class="cell col-header">N</div><div class="cell col-header">G</div><div class="cell col-header">O</div>';
+            bingoBoard.forEach((row, index) => {
+
+                row.forEach((num, key) => {
+                    const cell = document.createElement('div');
+                    cell.className = `cell ${index}-${key} `;
+                    if (index == 2 && key == 2) {
+                        cell.innerText = "BONGO";
+                        cell.style = "font-family: fantasy";
+                        cell.id = "bongo";
+                        cell.onclick = () => {
+                            if (this.disabled || !isBingo) return;
+                            if (isStarted && isBingo) {
+                                socket.emit('bingoWinner', username);
+                                cell.removeAttribute('onclick');
+                            }
+                        }
+                    } else {
+                        cell.innerText = num;
+                        cell.onclick = () => {
+                            if (numberCalled.includes(num)) {
+                                markBingo(num);
+                                cell.removeAttribute('onclick');
+                            }
+                        };   
+                        // cell.onclick = () => socket.emit('callNumber', num);   
+                    }
+                    boardDiv.appendChild(cell);
+                });
+            });
+        }
+
+        function checkBingo(){
+            const boardDiv = document.getElementById('bingoBoard');
+        }
+
+        function getRandomNumber(num1, num2) {            
+            let randomNumber;
+            do {
+                if (num2 === 15) {
+                    randomNumber = Math.floor(Math.random() * 15) + 1;
+                } else {
+                    randomNumber = Math.floor(Math.random() * (num2 - num1 + 1)) + num1;
+                }
+
+            } while (usedNumbers.has(randomNumber));
+
+            usedNumbers.add(randomNumber);
+            return randomNumber;
+        }
+
+        function updateNumbersCalled(numbers) {
+            const numbersDiv = document.getElementById('numbersCalled');
+            if (numbers.size > 0 ) {
+                const joinedNumbers = numbers.join(', ');
+                const wrappedDiv = `<div class="ball">${joinedNumbers}</div>`;
+                numbersDiv.innerHTML = 'Numbers Called: ' + wrappedDiv;
+            } else {
+                numbersDiv.innerHTML = 'Numbers Called: ';
+            }
+        }
+
+        function updateBingoWinner(winners) {
+            const numbersDiv = document.getElementById('bingoWinner');
+            numbersDiv.innerText = 'Winner: ' + winners.join(', ');
+            numbersDiv.classList.remove('hidden');
+        }
+
+        function markBingo(string) {
+            const cells = document.querySelectorAll('.cell');
+            cells.forEach(cell => {
+                if (cell.innerText == string) {
+                    cell.style.backgroundColor = 'lightgreen';
+                    cell.classList.add('selected');
+                }
+            });
+        }
+
+        function markBingoWinner() {
+            document.getElementById('bongo').style.backgroundColor = '#dde50a38';
+        }
+
+        function numberToColor(num) {
+            // Ensure the number is within a valid range (0-16777215 for 24-bit colors)
+            const randomNum = Math.floor(Math.random() * 16777215 + num);
+            // Convert the number to a hexadecimal string and pad with zeros
+            const hexColor = randomNum.toString(16).padStart(6, '0');
+
+            // Return the color in CSS format
+            return `#${hexColor}`;
+        }
+
+        function numberPinoyTerm(number) {
+
+            const bingoComedyTerms = [
+                "The One and Only",                 // 1
+                "Two Left Feet",                    // 2
+                "Three Idiots",                      // 3
+                "ForeMan",                          // 4
+                "High Five",                        // 5
+                "Six Packs",                 // 6
+                "Lucky Seven",                      // 7
+                "Bayani Agbayani",                  // 8
+                "Lucky Nine",                       // 9
+                "Ben Ten",                          // 10
+                "Eleven O’Clock News",              // 11
+                "Doughnut Twelve",                  // 12
+                "Friday The 13th",                  // 13
+                "Fourteen-Day Challenge",           // 14
+                "Fifteen Minutes of Fame",          // 15
+                "Sweet Sixteen",                    // 16
+                "Seventeen Going on Thirty",        // 17
+                "Eighteen Wheels",                  // 18
+                "Nineteen Problems",                // 19
+                "Twenty Questions",                 // 20
+                "Twenty-One and Done",              // 21
+                "Catch-22",                         // 22
+                "Michael Jordan",                   // 23
+                "Kobe Bryant",                      // 24
+                "Quarter Century",                  // 25
+                "Twenty-Six and Counting",          // 26
+                "Twenty-Seven Dresses",             // 27
+                "Twenty-Eight Days Later",          // 28
+                "Twenty-Nine Bottles of Beer",      // 29
+                "Dirty Thirty",                     // 30
+                "Thirty-One Flavors",               // 31
+                "Thirty-Two Teeth",                 // 32
+                "Thirty-Three Chambers",            // 33
+                "Thirty-Four Hours in a Day",       // 34
+                "Thirty-Five and Thriving",         // 35
+                "Thirty-Six Chambers",              // 36
+                "Thirty-Seven Cents",               // 37
+                "Thirty-Eight Special",             // 38
+                "Thirty-Nine and Fine",             // 39
+                "Forty Winks",                      // 40
+                "Forty-One and Done",               // 41
+                "The Answer to Everything",         // 42
+                "Forty-Three and Me",               // 43
+                "Forty-Four and More!",             // 44
+                "Forty-Five and Alive",             // 45
+                "Forty-Six and Still Kickin’",      // 46
+                "Forty-Seven Ways to Say No",       // 47
+                "Forty-Eight Hours of Fun",         // 48
+                "Forty-Nine Bottles of Soda",       // 49
+                "Half a Century",                   // 50
+                "Area 51",                          // 51
+                "Fifty-Two Weeks a Year",           // 52
+                "Fifty-Three and Feeling Free",     // 53
+                "Fifty-Four Floors",                // 54
+                "Fifty-Five and Thriving",          // 55
+                "Fifty-Six and Still Fabulous",     // 56
+                "Fifty-Seven Varieties",            // 57
+                "Fifty-Eight and Feeling Great!",   // 58
+                "Fifty-Nine and Fine",              // 59
+                "Sixty Seconds to Fame",            // 60
+                "Sixty-One and Done",               // 61
+                "Sixty-Two and Still New",          // 62
+                "Sixty-Three Degrees",              // 63
+                "Sixty-Four Squares",               // 64
+                "Sixty-Five and Alive",             // 65
+                "Sixty-Six and Kicking",            // 66
+                "Sixty-Seven and Thriving",         // 67
+                "Sixty-Eight and Feeling Great!",   // 68
+                "Sixty-Nine and Fine",              // 69
+                "Seventy and Still Spunky",         // 70
+                "Seventy-One and Having Fun",       // 71
+                "Seventy-Two Degrees",              // 72
+                "Seventy-Three and Feeling Free",   // 73
+                "Seventy-Four and More!",           // 74
+                "Seventy-Five and still Alive"      // 75
+            ];
+
+            return bingoComedyTerms[number - 1];
+        }
+    </script>
+</body>
+</html>

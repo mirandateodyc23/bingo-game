@@ -1,0 +1,8 @@
+{
+  "name": "app",
+  "script": "server.js",
+  "instances": "1",
+  "watch": true,
+  "max_memory_restart": "800M",
+  "exec_mode"  : "fork"
+}

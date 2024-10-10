@@ -1,0 +1,182 @@
+
+
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    background-color: #f4f4f4;
+    color: #333;
+}
+
+header {
+    background: #007bff;
+    color: white;
+    padding: 20px 0;
+    text-align: center;
+}
+
+nav ul {
+    list-style-type: none;
+    padding: 0;
+}
+
+nav ul li {
+    display: inline;
+    margin: 0 15px;
+}
+
+nav ul li a {
+    color: white;
+    text-decoration: none;
+    font-weight: bold;
+}
+
+.hero {
+    background: #007bff;
+    color: white;
+    padding: 50px 20px;
+    text-align: center;
+}
+
+.hero .button {
+    background: white;
+    color: #007bff;
+    padding: 10px 20px;
+    text-decoration: none;
+    border-radius: 5px;
+    font-weight: bold;
+}
+
+.features {
+    padding: 20px;
+    text-align: center;
+}
+
+.features .feature {
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    margin: 20px;
+    padding: 20px;
+    display: inline-block;
+    width: 30%;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+footer {
+    text-align: center;
+    padding: 20px;
+    background: #333;
+    color: white;
+    position: relative;
+    bottom: 0;
+    width: 100%;
+}
+
+#bingoBoard {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    margin: 20px;
+    width: 500px;
+}
+#bingoNumber {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin: 20px;
+    width: 500px;
+}
+#bingoNumber2 {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin: 20px;
+    width: 500px;
+}
+.cell {
+    height: 80px;
+    border: 2px solid #000;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    font-size: xx-large;
+    font-weight: bold;
+}
+
+.col-header {
+    background-color: #b5a7a7;
+    color: white;
+    height: 50px;
+}
+.container {
+    display: flex; /* Enable flexbox */
+    justify-content: space-between; /* Space between the divs */
+    padding: 20px;
+    background-color: #f4f4f4;
+    box-sizing: border-box; /* Include padding in width calculation */
+}
+.left-div {
+    padding: 20px;
+    width: 200px; /* Fixed width for the left div */
+}
+.right-div {
+    padding: 20px;
+    width: 500px; /* Fixed width for the right div */
+}
+
+#bingoNum {
+    font-size: 200px;
+}
+
+#big-ball {
+    width: 300px;
+    height: 300px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #3498db;
+    color: white;
+    border-radius: 50%;
+    font-size: 24px;
+    transition: transform 0.5s;
+
+    text-shadow: 
+    -1px -1px 0 gray,  
+    1px -1px 0 gray,
+    -1px 1px 0 gray,
+    1px 1px 0 gray; /* Creates a border effect */
+}
+
+.hidden {
+    display: none !important;
+}
+
+.active {
+    display: block;
+}
+
+.raffle-container {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.ball {
+    width: 50px;
+    height: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #3498db;
+    color: white;
+    border-radius: 50%;
+    font-size: 24px;
+    transition: transform 0.5s;
+
+    text-shadow: 
+    -1px -1px 0 gray,  
+    1px -1px 0 gray,
+    -1px 1px 0 gray,
+    1px 1px 0 gray; /* Creates a border effect */
+}
