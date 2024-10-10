@@ -89,7 +89,9 @@
                     document.getElementById('pauseButton').disabled = false; // Enable pause button
                     document.getElementById('resetButton').disabled = false; // Enable reset button
                 } else {
-                    document.getElementById('resetButton').remove(); // remove reset button
+                    document.getElementById('resetButton').disabled = true; // Disable instead of remove
+                    document.getElementById('pauseButton').disabled = true; // Disable instead of remove
+                    document.getElementById('startButton').disabled = true; // Disable instead of remove
                 }
                 document.getElementById('joinButton').disabled = true; // Enable start button
 
@@ -114,34 +116,40 @@
 
         socket.on('gameStarted', () => {
             isStarted = true;
-            alert('The game has begun.'); // Notify users that the game has started
+            console.log('The game has begun.'); // Notify users that the game has started
         });
 
         socket.on('gameResumed', () => {
             isStarted = true;
-            alert('The game resumed.'); // Notify users that the game has started
+            console.log('The game resumed.'); // Notify users that the game has started
         });
 
         socket.on('gamePaused', () => {
             isStarted = false;
-            alert("We've put the game on hold. Please wait."); // Notify users that the game was hold
+            console.log("We've put the game on hold. Please wait."); // Notify users that the game was hold
         });
 
         socket.on('pauseWinner', (winners) => {
             const winner = winners.join(', ');
-            alert('We have a winner! Congrats ' + winner); // Notify users that we have a winner
+            console.log('We have a winner! Congrats ' + winner); // Notify users that we have a winner
         });
 
         socket.on('gameReset', () => {
             isStarted = false;
+            bingoBoard = [];
             numberCalled = [];
             bingoWinner = [];
-            alert('he game has been reset.'); // Notify users that the game has been reset
+            isBingo = true;
             createBingoBoard();
             document.getElementById('numbersCalled').innerText = 'Numbers Called:';
             document.getElementById('bingoWinner').innerText = '';
             document.getElementById('bingoNum').innerText = 0;
+            document.getElementById('bingoNumber').classList.remove('active');
+            document.getElementById('bingoNumber').classList.add('hidden');
 
+            document.getElementById('bingoNumber2').classList.remove('active');
+            document.getElementById('bingoNumber2').classList.add('hidden');
+            console.log('he game has been reset.'); // Notify users that the game has been reset
         });
 
         const startEventHandler = function() {
@@ -204,6 +212,7 @@
             document.getElementById('resetButton').removeEventListener("click", resetEventHandler , false);
         };
         document.getElementById('resetButton').addEventListener("click", resetEventHandler, false);
+
         socket.on('numberCalled', (number) => {
             const bgColor = numberToColor(number);
             let letter = "";
@@ -261,7 +270,7 @@
 
         socket.on('gameOver', (status) => {
             isStarted = status;
-            alert('The game has been ended!'); // Notify users that the game has paused
+            console.log('The game has been ended!'); // Notify users that the game has paused
             document.getElementById('drawNow').classList.add('hidden');
         });
 
@@ -270,6 +279,23 @@
             updateBingoWinner(winners);
             markBingoWinner();
         });
+
+        socket.on('error', (error) => {
+            console.error('Socket error:', error);
+            console.log('An error occurred. Please try again.');
+        });
+
+        
+        function checkBingo(){
+            const allCalled = bingoBoard.every(row => 
+                row.every(num => numberCalled.includes(num))
+            );
+            if (allCalled) {
+                return true;
+            } else {
+                return false;
+            }
+        }
 
         function createBingoBoard() {
 
@@ -287,9 +313,9 @@
                 });
             });
             const boardDiv = document.getElementById('bingoBoard');
+            const fragment = document.createDocumentFragment();
             boardDiv.innerHTML = '<div class="cell col-header">B</div><div class="cell col-header">I</div><div class="cell col-header">N</div><div class="cell col-header">G</div><div class="cell col-header">O</div>';
             bingoBoard.forEach((row, index) => {
-
                 row.forEach((num, key) => {
                     const cell = document.createElement('div');
                     cell.className = `cell ${index}-${key} `;
@@ -298,10 +324,15 @@
                         cell.style = "font-family: fantasy";
                         cell.id = "bongo";
                         cell.onclick = () => {
-                            if (this.disabled || !isBingo) return;
-                            if (isStarted && isBingo) {
-                                socket.emit('bingoWinner', username);
-                                cell.removeAttribute('onclick');
+   
+                            if (this.disabled) return;
+                            if (isStarted) {
+                                const check = checkBingo();
+                                if (check) {
+                                    socket.emit('bingoWinner', username);
+                                }
+
+                                // cell.removeAttribute('onclick');
                             }
                         }
                     } else {
@@ -314,13 +345,11 @@
                         };   
                         // cell.onclick = () => socket.emit('callNumber', num);   
                     }
-                    boardDiv.appendChild(cell);
+                    fragment.appendChild(cell);
                 });
             });
-        }
 
-        function checkBingo(){
-            const boardDiv = document.getElementById('bingoBoard');
+            boardDiv.appendChild(fragment);
         }
 
         function getRandomNumber(num1, num2) {            

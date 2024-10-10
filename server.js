@@ -38,6 +38,12 @@ let isPaused = false; // Variable to track pause state
 const intervalDuration = 5000;
 const hodlDuration = 2000;
 const startNumberCalling = () => {
+    console.log("Number calling has been Started.");
+    if (numberInterval) {
+        console.log("Number calling is already running.");
+        return; // Prevent starting a new interval if one is already running
+    }
+    
     numberInterval = setInterval(() => {
         if (!isPaused) { // Check if not paused
             if (numbersCalled.length < MAX_BINGO_NUM) {
@@ -55,8 +61,17 @@ const startNumberCalling = () => {
 
             io.emit('drawNow', hodlDuration);
         }
-        // isPaused = true;
     }, intervalDuration); // 1000 seconds in milliseconds
+};
+
+const stopNumberCalling = () => {
+    if (numberInterval) {
+        clearInterval(numberInterval);
+        numberInterval = null; // Reset the interval ID
+        console.log("Number calling has been stopped.");
+    } else {
+        console.log("No number calling to stop.");
+    }
 };
 
 // Function to reset the game
@@ -64,7 +79,9 @@ const resetGame = () => {
     numbersCalled = [];
     bingoWinner = [];
     isGameActive = false;
-    clearInterval(numberInterval); // Stop if all numbers are called
+    isPaused = false;
+
+    stopNumberCalling(); // Stop if all numbers are called
 };
 
 const path = require('path');
@@ -87,11 +104,11 @@ app.use((req, res, next) => {
 
     // Serve static files
     const modifiedIP = clientIp.replace(/(\.\d+)$/, '');
-    if (modifiedIP === '10.150.23') { // PRG & DES ONLY
+    // if (modifiedIP === '10.150.23') { // PRG & DES ONLY
         next(); // Proceed to the next middleware or route
-    } else {
-        return res.redirect('/access-denied');
-    }
+    // } else {
+    //     return res.redirect('/access-denied');
+    // }
 });
 
 app.use('/css', express.static(path.join(__dirname, 'node_modules/bootstrap/dist/css')));
@@ -177,6 +194,11 @@ io.on('connection', (socket) => {
     socket.on('disconnect', () => {
         users = users.filter(user => user.id !== socket.id);
         console.log('A user disconnected:', socket.id);
+    });
+
+    socket.on('error', (error) => {
+        console.error('Socket error:', error);
+        alert('An error occurred. Please try again.');
     });
     
 });
